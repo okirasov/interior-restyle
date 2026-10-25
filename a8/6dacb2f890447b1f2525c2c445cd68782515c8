@@ -1,0 +1,39 @@
+README.md
+  s_58070cbc850ad6::t_217bed896c9e76 124,126,145
+README.ru.md
+  s_58070cbc850ad6::t_662e88d12d893e 125,127,146
+SKILL.md
+  s_58070cbc850ad6::t_fbb5c1c9627554 23-25,43-44,51-56,67-69,76-81,143,150-151,154-155,158-159,161-164
+references/materials.md
+  s_58070cbc850ad6::t_a202989e937ac1 9-11,15-17,24-29,33-41
+references/pitfalls.md
+  s_58070cbc850ad6::t_fb8dfe80b0684f 9-12,21-22
+references/planner_objects.md
+  s_58070cbc850ad6::t_67070545838023 4-6,10-11,16-17,21-22,24-29,31,37-38,44-45
+scripts/inspect_scene.py
+  s_58070cbc850ad6::t_c1e59a11a612b5 7-10,12,18,29,35-36,46-58,60-71,75,93-113,115-116
+scripts/make_pdf.py
+  s_58070cbc850ad6::t_662432ef328a90 9,22-23
+scripts/scene_lib.py
+  s_58070cbc850ad6::t_3aae170b46e174 14,56-58,151,153-154,189,191-193,195-196,336-353,560-564,566-567,577-584,593-594,604-612
+scripts/swatch.py
+  s_58070cbc850ad6::t_0b8755c65c6477 1-53
+scripts/walkthrough.py
+  s_58070cbc850ad6::t_e943051cb941c0 16-18,25-26,144-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "a86dacb2f890447b1f2525c2c445cd68782515c8",
+  "prompts": {},
+  "sessions": {
+    "s_58070cbc850ad6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4962bca6-d4e6-46df-a7a3-c333213cc254",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Oleg Kirasov <okirasov@gmail.com>"
+    }
+  }
+}
