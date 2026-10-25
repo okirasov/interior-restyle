@@ -122,8 +122,9 @@ interior-restyle/
 ├── SKILL.md                  # порядок работы и правила для Claude
 ├── scripts/
 │   ├── scene_lib.py          # библиотека для Blender: импорт, материалы, геометрия, свет, камеры, рендер
-│   ├── inspect_scene.py      # список объектов с габаритами + план и изометрия экспорта планировщика
+│   ├── inspect_scene.py      # объекты и детали с габаритами + план с сеткой и изометрия экспорта планировщика
 │   ├── contact_sheet.py      # несколько рендеров на одной картинке для быстрого просмотра
+│   ├── swatch.py             # средний цвет участков картинки (образец каталога, референс) для подбора материалов
 │   ├── make_pdf.py           # PDF-презентация по JSON-описанию
 │   └── walkthrough.py        # видео-проход с плавной камерой и ограничением скорости
 ├── references/
@@ -142,6 +143,7 @@ blender -b --python scripts/inspect_scene.py -- scene.glb out_dir/
 
 # лист предпросмотра / PDF (Python с Pillow + reportlab; всегда запускать с -I)
 python -I scripts/contact_sheet.py sheet.jpg renders/*.png --cols 3
+python -I scripts/swatch.py swatches.jpg ref.jpg 650 150 790 350 дуб --texture textures/oak_veneer_01_diff_2k.jpg
 python -I scripts/make_pdf.py pdf_config.json renders.pdf
 
 # видео: проверка движения, контрольные кадры, черновик, финал

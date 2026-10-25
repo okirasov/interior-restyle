@@ -13,15 +13,17 @@ route.json:
   "blend": "/abs/path/flat_design.blend",
   "out_dir": "/abs/path/renders",
   "fps": 25, "lens": 20, "eye": 1.6,
-  "walk_speed": 0.6,            # м/с — спокойный шаг
-  "turn_rate": 35,              # град/с — комфортный поворот головы (больше 45 уже рвёт картинку при 25 fps)
-  "hide_prefixes": ["Жалюзи_гостиная_ламель"],   # что скрыть на время видео (например, поднять жалюзи)
+  "walk_speed": 0.6,
+  "turn_rate": 35,
+  "hide_prefixes": ["Жалюзи_гостиная_ламель"],
   "keys": [
     {"pos": [1.40, 4.35], "look": [1.40, 0.0, 1.40], "note": "вход"},
     {"pos": [1.62, 2.95], "look": [2.90, 2.10, 1.35], "hold": 1.0, "note": "санузел"},
     ...
   ]
 }
+walk_speed — м/с, спокойный шаг; turn_rate — град/с, комфортный поворот головы (больше 45 уже рвёт картинку
+при 25 fps); hide_prefixes — что скрыть на время видео (например, поднять жалюзи); "..." в keys — остальные точки.
 pos может быть [x, y] (высота = eye) или [x, y, z]. hold — пауза в точке, с.
 --duration растягивает/сжимает всё время; если при этом лимиты превышаются, скрипт об этом пишет.
 --analyze только печатает скорость и поворот по кадрам и выходит (рендера нет).
@@ -139,11 +141,10 @@ if ENGINE == "eevee":
     if hasattr(sc.eevee, "use_raytracing"): sc.eevee.use_raytracing = True
 else:
     sc.render.engine = "CYCLES"; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = True
-    prefs = bpy.context.preferences.addons["cycles"].preferences
-    prefs.compute_device_type = "METAL"; prefs.get_devices()
-    for d in prefs.devices: d.use = True
-    if hasattr(prefs, "kernel_optimization_level"): prefs.kernel_optimization_level = "OFF"   # иначе Blender 5.2 падает
-    sc.cycles.device = "GPU"; sc.render.use_persistent_data = True
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import scene_lib
+    scene_lib.use_gpu()                        # Metal/OptiX/CUDA/..., kernel optimization OFF (иначе Blender 5.2 падает)
+    sc.render.use_persistent_data = True
     if "--no-motion-blur" not in argv:
         sc.render.use_motion_blur = True; sc.render.motion_blur_shutter = 0.5    # убирает «стробоскоп» при поворотах
 

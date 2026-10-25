@@ -121,8 +121,9 @@ interior-restyle/
 ├── SKILL.md                  # the workflow and rules Claude follows (instructions are in Russian)
 ├── scripts/
 │   ├── scene_lib.py          # Blender library: import, materials, geometry, lights, cameras, render
-│   ├── inspect_scene.py      # object list with bounds + plan/isometric images of a planner export
+│   ├── inspect_scene.py      # objects and parts with bounds + gridded plan and isometric of a planner export
 │   ├── contact_sheet.py      # several renders on one image for quick review
+│   ├── swatch.py             # mean color of image regions (catalog swatch, reference) for material matching
 │   ├── make_pdf.py           # PDF presentation from a JSON config
 │   └── walkthrough.py        # walkthrough video with a smooth, speed-limited camera
 ├── references/
@@ -141,6 +142,7 @@ blender -b --python scripts/inspect_scene.py -- scene.glb out_dir/
 
 # contact sheet / PDF (Python with Pillow + reportlab; always run with -I)
 python -I scripts/contact_sheet.py sheet.jpg renders/*.png --cols 3
+python -I scripts/swatch.py swatches.jpg ref.jpg 650 150 790 350 oak --texture textures/oak_veneer_01_diff_2k.jpg
 python -I scripts/make_pdf.py pdf_config.json renders.pdf
 
 # walkthrough: check the motion, key stills, draft, final

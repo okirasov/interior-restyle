@@ -11,7 +11,7 @@
 Все размеры в метрах, ось Z вверх, координаты мировые (после import_scene трансформы применены,
 поэтому координаты объекта = мировые, и box-проекция текстур работает без искажений).
 """
-import bpy, bmesh, os, math
+import bpy, bmesh, os, math, colorsys
 from mathutils import Vector, Matrix
 
 ROOT = TEX = None
@@ -53,7 +53,9 @@ def import_scene(path):
 
 
 def parse(name):
-    """Имена объектов из онлайн-планировщика: 'тип|objN|_экземпляр|...'. Возвращает (тип, часть, полное имя)."""
+    """Имена объектов из онлайн-планировщика: 'тип|objN|_экземпляр|...'. Возвращает (тип, часть, полное имя).
+    У стен вторая часть — комната, в которую смотрит грань: 'wall|R_<id пола>|_<id>|sN' -> ('wall', 'R_<id>', ...).
+    У полов — id пола: 'floor|_<id>|0' -> ('floor', '_<id>', ...)."""
     p = name.split("|")
     return p[0], (p[1] if len(p) > 1 else ""), name
 
@@ -146,8 +148,10 @@ def textured(name, prefix, size_m, tint=(1, 1, 1), rough_mul=1.0, bump=0.0, shee
              desat=0.0, sat=1.0, res="2k"):
     """PBR-набор Poly Haven (<prefix>_diff/_rough_<res>.jpg в TEX) с box-проекцией в мировых координатах.
     size_m — реальный размер текстуры (поле dimensions в api.polyhaven.com/info/<id>).
+    Нужны только файлы _diff_ и _rough_ (карта нормалей не используется — её не скачивать).
     tint умножает цвет (можно >1). desat>0 — берётся только яркость × desat (у льна голубой оттенок).
-    sat<1 — приглушить насыщенность (например, жёлтый камень -> бежевый)."""
+    sat<1 — приглушить насыщенность (например, жёлтый камень -> бежевый). Насыщенность снижается ДО tint,
+    поэтому tint по образцу считай с тем же sat: tint_for_swatch(образец, текстура, sat=sat)."""
     m, n, l, b = new_mat(name)
     tc = n.new("ShaderNodeTexCoord"); mp = n.new("ShaderNodeMapping")
     mp.inputs["Scale"].default_value = (1 / size_m,) * 3
@@ -182,10 +186,14 @@ def srgb_to_linear(c):
     return tuple(((v + 0.055) / 1.055) ** 2.4 if v > 0.04045 else v / 12.92 for v in c)
 
 
-def tint_for_swatch(swatch_srgb_mean, texture_srgb_mean):
+def tint_for_swatch(swatch_srgb_mean, texture_srgb_mean, sat=1.0):
     """Множитель tint для textured(), чтобы средний цвет текстуры совпал с образцом из каталога.
-    Средние sRGB-цвета считать по пикселям (см. references/materials.md)."""
+    Средние sRGB-цвета считать по пикселям (scripts/swatch.py, см. references/materials.md).
+    sat — то же значение, что передаёшь в textured(): средний цвет текстуры сначала приглушается так же
+    (приближённо, по среднему цвету), и tint считается уже от него."""
     a, b = srgb_to_linear(swatch_srgb_mean), srgb_to_linear(texture_srgb_mean)
+    if sat != 1.0:
+        h, s_, v = colorsys.rgb_to_hsv(*b); b = colorsys.hsv_to_rgb(h, min(1.0, s_ * sat), v)
     return tuple(x / y for x, y in zip(a, b))
 
 
@@ -323,6 +331,24 @@ def box(name, x0, x1, y0, y1, z0, z1, mat):
     o = bpy.data.objects.new(name, me); COLL.objects.link(o)
     o.location = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); o.scale = (x1 - x0, y1 - y0, z1 - z0)
     o.data.materials.append(M[mat]); return o
+
+
+def ceilings_from_floors(meshes, height, mat, prefix="floor|"):
+    """Потолки по точным контурам полов планировщика (любой формы, без перекрытий — полы не перекрываются).
+    Пол планировщика — плита со скруглёнными кромками: берутся только верхние грани, иначе после подъёма
+    верх и низ плиты совпадут и потолок станет чёрным. Возвращает список объектов-потолков."""
+    out = []
+    for o in meshes:
+        if not o.name.startswith(prefix):
+            continue
+        bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world)
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.normal.z < 0.99], context="FACES")
+        for v in bm.verts:
+            v.co.z = height
+        bmesh.ops.reverse_faces(bm, faces=bm.faces[:])          # нормалью вниз
+        me = bpy.data.meshes.new("Потолок"); bm.to_mesh(me); bm.free(); me.materials.append(M[mat])
+        c = bpy.data.objects.new("Потолок_" + parse(o.name)[1], me); COLL.objects.link(c); out.append(c)
+    return out
 
 
 def plane(name, x0, x1, y0, y1, z, mat, down=True):
@@ -531,11 +557,14 @@ def camera(name, loc, target=None, lens=18, ortho_scale=None):
     return o
 
 
-def setup_cycles(samples=256, exposure=0.0, look="AgX - Medium High Contrast", max_bounces=8):
-    """Cycles на GPU (Metal на Mac). kernel_optimization_level=OFF обязателен для Blender 5.2.x на Metal:
-    фоновая компиляция специализированных ядер роняет Blender (NSURL nil в MetalKernelPipeline::compile)."""
-    sc = bpy.context.scene; sc.render.engine = "CYCLES"
+def use_gpu():
+    """Включить GPU для Cycles: Metal на Mac, иначе OptiX/CUDA/HIP/oneAPI; без GPU — CPU.
+    kernel_optimization_level=OFF обязателен для Blender 5.2.x на Metal: фоновая компиляция
+    специализированных ядер роняет Blender (NSURL nil в MetalKernelPipeline::compile)."""
+    sc = bpy.context.scene
     prefs = bpy.context.preferences.addons["cycles"].preferences
+    if hasattr(prefs, "kernel_optimization_level"):
+        prefs.kernel_optimization_level = "OFF"   # ДО get_devices: иначе Metal успевает начать компиляцию с FULL
     for dev in ("METAL", "OPTIX", "CUDA", "HIP", "ONEAPI"):
         try:
             prefs.compute_device_type = dev; prefs.get_devices()
@@ -545,7 +574,14 @@ def setup_cycles(samples=256, exposure=0.0, look="AgX - Medium High Contrast", m
     for d in prefs.devices: d.use = True
     if hasattr(prefs, "kernel_optimization_level"):
         prefs.kernel_optimization_level = "OFF"
-    sc.cycles.device = "GPU"; sc.cycles.samples = samples; sc.cycles.use_denoising = True
+    sc.cycles.device = "GPU" if any(d.type != "CPU" for d in prefs.devices) else "CPU"
+
+
+def setup_cycles(samples=256, exposure=0.0, look="AgX - Medium High Contrast", max_bounces=8):
+    """Cycles на GPU (см. use_gpu), шумодав, AgX."""
+    sc = bpy.context.scene; sc.render.engine = "CYCLES"
+    use_gpu()
+    sc.cycles.samples = samples; sc.cycles.use_denoising = True
     sc.cycles.max_bounces = max_bounces
     sc.cycles.caustics_reflective = False; sc.cycles.caustics_refractive = False
     sc.view_settings.view_transform = "AgX"; sc.view_settings.look = look; sc.view_settings.exposure = exposure
@@ -554,7 +590,8 @@ def setup_cycles(samples=256, exposure=0.0, look="AgX - Medium High Contrast", m
 
 def render_views(views, which, out_dir, res=1600, groups=None):
     """views: {имя: (позиция, цель или None для плана, объектив, [группы_скрыть])}.
-    which: список имён/префиксов/суффиксов или ['all']. Имена с '_bath_' и план рендерятся вертикально (3:4).
+    which: список имён/префиксов/суффиксов или ['all']. Точное имя важнее префикса; если префиксу подходят
+    несколько видов, берётся первый и печатается предупреждение. Имена с '_bath_' и план — вертикально (3:4).
     groups: {имя_группы: [объекты]} — скрываются только на своих видах."""
     sc = bpy.context.scene; groups = groups or {}
     cams = {}
@@ -564,7 +601,15 @@ def render_views(views, which, out_dir, res=1600, groups=None):
         which = list(views)
     os.makedirs(out_dir, exist_ok=True); done = []
     for w in which:
-        view = next(k for k in views if k == w or k.startswith(w) or k.endswith("_" + w))
+        if w in views:
+            view = w
+        else:
+            cand = [k for k in views if k.startswith(w) or k.endswith("_" + w)]
+            if not cand:
+                raise KeyError(f"Нет вида '{w}'. Есть: {', '.join(views)}")
+            if len(cand) > 1:
+                print(f"ВНИМАНИЕ: '{w}' подходит к {cand}; рендерю {cand[0]}, остальные — полным именем")
+            view = cand[0]
         sc.camera = cams[view]
         hide_now = {o for g in views[view][3] for o in groups.get(g, [])}
         for g in groups.values():
