@@ -1,0 +1,53 @@
+.gitignore
+  s_faf7759c43672c::t_806b95e0bb25cb 1-4
+LICENSE
+  s_faf7759c43672c::t_794d2b4b6ea2be 1-21
+SKILL.md
+  s_faf7759c43672c::t_43536640e8481d 1-145
+references/materials.md
+  s_64e033617a3e2a::t_90e05ec2862877 1-61
+references/pitfalls.md
+  s_64e033617a3e2a::t_acd663a6d4db17 1-66
+references/planner_objects.md
+  s_64e033617a3e2a::t_c98eea0856684c 1-35
+references/video.md
+  s_64e033617a3e2a::t_d761e4394012d7 1-31
+scripts/contact_sheet.py
+  s_64e033617a3e2a::t_7d2541afe7a2c3 1-29
+scripts/inspect_scene.py
+  s_faf7759c43672c::t_ccb9bca685afad 1-68
+scripts/make_pdf.py
+  s_64e033617a3e2a::t_85a87f0a1dd45a 1-98
+scripts/scene_lib.py
+  s_64e033617a3e2a::t_b1a3eebe5e20a5 1-580
+scripts/walkthrough.py
+  s_64e033617a3e2a::t_6fa79b97884f6b 1-167
+README.md
+  s_64e033617a3e2a::t_2e0b9665fea2fd 1-189
+README.ru.md
+  s_64e033617a3e2a::t_a006f584ab12d6 1-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f5e4d916f71d00a8aa3718ddaf7cfb754fdf67de",
+  "prompts": {},
+  "sessions": {
+    "s_64e033617a3e2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "882b0095-32f5-4cbe-bf76-73dcd7ddb164",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Oleg Kirasov <okirasov@gmail.com>"
+    },
+    "s_faf7759c43672c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4548d63e-ebe6-4189-8694-97e96020dc32",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Oleg Kirasov <okirasov@gmail.com>"
+    }
+  }
+}
